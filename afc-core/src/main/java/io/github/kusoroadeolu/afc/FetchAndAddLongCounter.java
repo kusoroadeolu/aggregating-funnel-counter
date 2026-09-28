@@ -3,7 +3,7 @@ package io.github.kusoroadeolu.afc;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-public class FAACounter implements LongCounter{
+public class FetchAndAddLongCounter implements AtomicLongCounter {
     private volatile long value;
 
     private static final VarHandle VALUE;
@@ -27,7 +27,7 @@ public class FAACounter implements LongCounter{
     static {
         var l = MethodHandles.lookup();
         try {
-            VALUE = l.findVarHandle(FAACounter.class, "value", long.class);
+            VALUE = l.findVarHandle(FetchAndAddLongCounter.class, "value", long.class);
         }catch (Exception e) {
             throw new ExceptionInInitializerError(e);
         }

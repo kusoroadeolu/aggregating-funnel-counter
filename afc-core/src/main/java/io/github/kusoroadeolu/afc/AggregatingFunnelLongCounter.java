@@ -3,15 +3,15 @@ package io.github.kusoroadeolu.afc;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import static io.github.kusoroadeolu.afc.MathUtils.roundToPowerOfTwo;
+
 /*
 * Based on the paper https://arxiv.org/pdf/2411.14420*
 *
 * A blocking but scalable & linearizable fetch and add implementation
-* 
+*
 *  This counter is much more similar to a single fetch and add counter than a
 *  striped counter and can be used to build scalable striped counters.
-*  This class provides around a 55% thrpt improvement over fetch and add at 8 threads
-*  though at the cost of significantly more memory usage
 * */
 class BaseFieldLPad {
     byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
@@ -56,7 +56,7 @@ class BasePad extends BaseField {
 }
 
 
-public class AggregatingFunnelLongCounter extends BasePad implements LongCounter {
+public class AggregatingFunnelLongCounter extends BasePad implements AtomicLongCounter {
     private static final int NCPU = Runtime.getRuntime().availableProcessors();
     private static final int FUNNEL_DEPTH = 1; //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
@@ -92,27 +92,25 @@ public class AggregatingFunnelLongCounter extends BasePad implements LongCounter
     public void increment(int by) {
         if (by == 0) return;
 
-        long id = Thread.currentThread().threadId();
-        atomicAdd(aggregators, Math.absExact(by), 0, id, by < 0);
+        long rnd = MathUtils.index();
+        atomicAdd(aggregators, Math.absExact(by), 0, rnd ,by < 0);
     }
 
-    void atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, long id, boolean isNegative){
+    void atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, long rnd ,boolean isNegative){
         var aggregatorArray = aggregators[level];
 
         //account for the fact we split the array into negative and positive sides
-        int half = aggregatorArray.size() >>> 1;
-        int mask = half - 1;
+        long half = aggregatorArray.size() >>> 1;
+        long mask = half - 1;
+        int index = (int) (rnd & mask);
 
-        int index = index(id, mask);
-
-        int normalizedIndex = isNegative ? index + half : index;
+        int normalizedIndex = (int) (isNegative ? index + half : index);
         var aggregator = aggregatorArray.indexAt(normalizedIndex);
 
 
         long aBefore = aggregator.fetchAndAddValue(incrementBy);
         long after;
-
-        while ((after = aggregator.after) < aBefore) { // <- can use an acquire here
+        while ((after = aggregator.laAfter()) < aBefore) { // <- can use an acquire here
             Thread.onSpinWait();
         }
 
@@ -121,24 +119,16 @@ public class AggregatingFunnelLongCounter extends BasePad implements LongCounter
             long diff = value - aBefore;
 
             if (level == (FUNNEL_DEPTH - 1)) BASE.getAndAdd(this, isNegative ? -diff : diff);
-            else atomicAdd(aggregators, diff, level + 1, id, isNegative);
+            else atomicAdd(aggregators, diff, level + 1, rnd, isNegative);
 
-            aggregator.after = value; // <- can use a release here
+            AFTER.setRelease(aggregator, value);
         }
-    }
-
-    private int index(long id, int mask) {
-        long h = id + 0x9E3779B97F4A7C15L;
-        h = (h ^ (h >>> 30)) * 0xBF58476D1CE4E5B9L;
-        h = (h ^ (h >>> 27)) * 0x94D049BB133111EBL;
-        h =  h ^ (h >>> 31);
-        return (int) (h & mask);
     }
 
     //Wrapper class to make working with indexes less confusing
     static class AggregatorArray {
         final Aggregator[] aggregators;
-        final int size;
+        final long size;
 
         public AggregatorArray(int size) {
             aggregators = new Aggregator[size];
@@ -153,16 +143,13 @@ public class AggregatingFunnelLongCounter extends BasePad implements LongCounter
             return aggregators[index];
         }
 
-        public int size() {
+        public long size() {
             return size;
         }
 
     }
 
 
-    static int roundToPowerOfTwo(final int value) {
-        return Math.max(2, 1 << (32 - Integer.numberOfLeadingZeros(value - 1)));
-    }
 
     @SuppressWarnings("unused")
     static class AggregatorLPad {
@@ -186,6 +173,10 @@ public class AggregatingFunnelLongCounter extends BasePad implements LongCounter
 
     static class AggregatorAfterField extends AggregatorLPad {
         volatile long after;
+
+        public long laAfter() {
+            return (long) AFTER.getAcquire(this);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -212,7 +203,7 @@ public class AggregatingFunnelLongCounter extends BasePad implements LongCounter
 
 
         long fetchAndAddValue(long by) {
-            return (long) VALUE.getAndAddAcquire(this, by);
+            return (long) VALUE.getAndAdd(this, by);
         }
     }
 
@@ -239,14 +230,17 @@ public class AggregatingFunnelLongCounter extends BasePad implements LongCounter
 
     private static final VarHandle BASE;
     private static final VarHandle VALUE;
+    private static final VarHandle AFTER;
 
     static {
         var l = MethodHandles.lookup();
         try {
             BASE = l.findVarHandle(AggregatingFunnelLongCounter.class, "base", long.class);
             VALUE = l.findVarHandle(Aggregator.class, "value", long.class);
+            AFTER = l.findVarHandle(Aggregator.class, "after", long.class);
         }catch (Exception e) {
             throw new ExceptionInInitializerError(e);
         }
     }
 }
+
