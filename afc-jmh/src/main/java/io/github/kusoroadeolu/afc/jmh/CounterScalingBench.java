@@ -23,7 +23,7 @@ import static io.github.kusoroadeolu.afc.jmh.JvmArgs.*;
 @BenchmarkMode(Mode.Throughput)
 public class CounterScalingBench {
 
-    @Param({"AggregatingXaddCounter","AggregatingAtomicCounter"})
+    @Param({"AggregatingXaddCounter", "XaddCounter" ,"AggregatingAtomicCounter"})
     private String implementation;
 
     static boolean unsigned = true;
