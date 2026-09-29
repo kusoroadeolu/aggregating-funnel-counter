@@ -8,10 +8,28 @@ import static io.github.kusoroadeolu.afc.MathUtils.roundToPowerOfTwo;
 /*
 * Based on the paper https://arxiv.org/pdf/2411.14420*
 *
-* A blocking but scalable & linearizable fetch and add implementation
+* A scalable & linearizable fetch and add implementation. Unlike
+* the cpu instruction, this implementation is blocking & not wait free
 *
-*  This counter is much more similar to a single fetch and add counter than a
-*  striped counter and can be used to build scalable striped counters.
+* The core idea of this implementation is to spread contention on a fetch and add instruction across multiple memory locations
+* Aggregators
+*
+* To improve locality while spreading contention across we use a uniformly spread hash which uses thread ids.
+* However, since collisions on indexes can still occur, we combine incoming requests into a batch, allowing only one thread to observe and
+* possibly modify the aggregator below the current one or the base long.
+*
+* This class also includes false sharing protection for different classes and fields.
+*
+* This counter is much more similar to a single fetch and add counter than a
+* striped counter and can be used to build scalable striped counters. This class does contain some extra machinery to
+* ensure a thread always returns a linearizable value (similar to how faa works) at the cost of some thrpt.
+*
+* To adapt the batch list for gc environments, rather than using a stack and keeping the latest batch as the head of the stack (keeping unreachable refs alive),
+* we instead use a queue where the tail is the latest batch, therefore, memory scales with the slowest thread holding a reference to an older batch rather than the
+* length of the batch
+*
+* If you don't need a return value, you can check out the other implementation
+* which doesn't include the batch machinery and provides a thrpt advantage and no gc inference
 * */
 class BaseFieldLPad {
     byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
@@ -55,8 +73,7 @@ class BasePad extends BaseField {
 
 }
 
-
-public class AggregatingFunnelLongCounter extends BasePad implements AtomicLongCounter {
+public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter {
     private static final int NCPU = Runtime.getRuntime().availableProcessors();
     private static final int FUNNEL_DEPTH = 1; //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
@@ -64,64 +81,91 @@ public class AggregatingFunnelLongCounter extends BasePad implements AtomicLongC
 
 
     private final AggregatorArray[] aggregators;
+    private final boolean monotonic;
 
-    public AggregatingFunnelLongCounter() {
+    public AggregatingXaddCounter(boolean isMonotonic) {
         this.aggregators = new AggregatorArray[FUNNEL_DEPTH];
         for (int i = 0; i < FUNNEL_DEPTH; ++i) {
             int pow = i + 1;
             int size = roundToPowerOfTwo(NCPU / (1 << pow));
             aggregators[i] = new AggregatorArray(size);
         }
+
+        this.monotonic = isMonotonic;
+    }
+
+    public AggregatingXaddCounter() {
+        this(false);
     }
 
     @Override
-    public void increment() {
-        increment(1);
+    public long fetchAndIncrement() {
+       return increment(1);
     }
 
     @Override
-    public void decrement() {
-        increment(-1);
+    public long fetchAndDecrement() {
+       if (monotonic) throw new IllegalArgumentException("Attempting to decrement a monotonic counter");
+       return increment(-1);
     }
 
     @Override
-    public long sum() {
+    public long value() {
         return base;
     }
 
-    public void increment(int by) {
-        if (by == 0) return;
-
+    public long increment(long by) {
+        if (by == 0) return value();
         long rnd = MathUtils.index();
-        atomicAdd(aggregators, Math.absExact(by), 0, rnd ,by < 0);
+        return atomicAdd(aggregators, Math.absExact(by), 0, rnd ,by < 0);
     }
 
-    void atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, long rnd ,boolean isNegative){
+    long atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, long rnd, boolean isNegative){
         var aggregatorArray = aggregators[level];
+        long size = aggregatorArray.size();
 
         //account for the fact we split the array into negative and positive sides
-        long half = aggregatorArray.size() >>> 1;
-        long mask = half - 1;
-        int index = (int) (rnd & mask);
 
-        int normalizedIndex = (int) (isNegative ? index + half : index);
+        int normalizedIndex;
+        if (monotonic) normalizedIndex = (int) (rnd & (size - 1));
+        else {
+            long half = size >>> 1;
+            int index = (int) (rnd & (half - 1));
+            normalizedIndex = (int) (isNegative ? index + half : index);
+        }
+
+
         var aggregator = aggregatorArray.indexAt(normalizedIndex);
 
-
+        Batch start = aggregator.latestBatch();
         long aBefore = aggregator.fetchAndAddValue(incrementBy);
-        long after;
-        while ((after = aggregator.laAfter()) < aBefore) { // <- can use an acquire here
+        Batch latest;
+        while ((latest = aggregator.latestBatch()).after < aBefore) {
             Thread.onSpinWait();
         }
 
-        if (aBefore == after) { //we can yield before we read value? to allow other threads make progress?
+        if (aBefore == latest.after) { //we can yield before we read value? to allow other threads make progress?
             long value = aggregator.value;
             long diff = value - aBefore;
+            long mainBefore;
 
-            if (level == (FUNNEL_DEPTH - 1)) BASE.getAndAdd(this, isNegative ? -diff : diff);
-            else atomicAdd(aggregators, diff, level + 1, rnd, isNegative);
+            if (level == (FUNNEL_DEPTH - 1)) mainBefore = (long) BASE.getAndAdd(this, isNegative ? -diff : diff);
+            else mainBefore = atomicAdd(aggregators, diff, level + 1, rnd, isNegative);
 
-            AFTER.setRelease(aggregator, value);
+            Batch newBatch = new Batch(aBefore, value, mainBefore);
+            latest.next = newBatch;
+            LATEST.setRelease(aggregator, newBatch);
+            return mainBefore;
+
+        } else {
+            var b = start;
+
+            while (!(b.before <= aBefore && aBefore < b.after)) {
+                b = b.next;
+            }
+
+            if (isNegative) return (b.mainBefore + b.before) - aBefore;
+            else return b.mainBefore + (aBefore - b.before);
         }
     }
 
@@ -172,10 +216,10 @@ public class AggregatingFunnelLongCounter extends BasePad implements AtomicLongC
     }
 
     static class AggregatorAfterField extends AggregatorLPad {
-        volatile long after;
+        volatile Batch latest = new Batch(0, 0, 0);
 
-        public long laAfter() {
-            return (long) AFTER.getAcquire(this);
+        public Batch latestBatch() {
+            return (Batch) LATEST.getAcquire(this);
         }
     }
 
@@ -207,6 +251,7 @@ public class AggregatingFunnelLongCounter extends BasePad implements AtomicLongC
         }
     }
 
+
     @SuppressWarnings("unused")
     static class Aggregator extends AggregatorValueField {
         byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
@@ -227,17 +272,30 @@ public class AggregatingFunnelLongCounter extends BasePad implements AtomicLongC
 
     }
 
+    static class Batch {
+        final long before;
+        final long after;
+        final long mainBefore;
+        Batch next; //piggybacked by write to agg#latestBatch
+
+        public Batch(long before, long after, long mainBefore) {
+            this.before = before;
+            this.after = after;
+            this.mainBefore = mainBefore;
+        }
+    }
+
 
     private static final VarHandle BASE;
     private static final VarHandle VALUE;
-    private static final VarHandle AFTER;
+    private static final VarHandle LATEST;
 
     static {
         var l = MethodHandles.lookup();
         try {
-            BASE = l.findVarHandle(AggregatingFunnelLongCounter.class, "base", long.class);
+            BASE = l.findVarHandle(AggregatingXaddCounter.class, "base", long.class);
             VALUE = l.findVarHandle(Aggregator.class, "value", long.class);
-            AFTER = l.findVarHandle(Aggregator.class, "after", long.class);
+            LATEST = l.findVarHandle(Aggregator.class, "latest", Batch.class);
         }catch (Exception e) {
             throw new ExceptionInInitializerError(e);
         }
