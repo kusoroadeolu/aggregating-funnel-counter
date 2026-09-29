@@ -3,7 +3,6 @@ package io.github.kusoroadeolu.afc.jmh;
 import io.github.kusoroadeolu.afc.AggregatingAtomicCounter;
 import io.github.kusoroadeolu.afc.AggregatingXaddCounter;
 import io.github.kusoroadeolu.afc.AtomicLongCounter;
-import io.github.kusoroadeolu.afc.XaddCounter;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;

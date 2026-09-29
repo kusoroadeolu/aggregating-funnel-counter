@@ -15,7 +15,7 @@ import static io.github.kusoroadeolu.afc.MathUtils.roundToPowerOfTwo;
 *  */
 public class AggregatingAtomicCounter extends BasePad implements AtomicLongCounter {
     private static final int NCPU = Runtime.getRuntime().availableProcessors();
-    private static final int FUNNEL_DEPTH = 2; //a funnel depth of one seems to be the best for my cpu count
+    private static final int FUNNEL_DEPTH = (Math.max(1, MathUtils.roundToPowerOfTwo(NCPU) / 16)); //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
     // Hmm, though that'd only be true if higher depth alleviates contention past 8 threads which unfortunately I cannot prove yet
     private final boolean unsigned; //we only allow positive integers
@@ -45,7 +45,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
 
     @Override
     public long fetchAndDecrement() {
-        if (unsigned) throw new IllegalArgumentException("Attempting to decrement a monotonic counter");
+        if (unsigned) throw new IllegalArgumentException("Attempting to decrement an unsigned counter");
         increment(-1);
         return 1;
     }
@@ -57,14 +57,13 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
 
     @Override
     public boolean compareAndSet(long from, long to) {
-        if (unsigned && to < 0) throw new IllegalArgumentException("Attempting to decrement a unsigned counter");
+        if (unsigned && to < 0) throw new IllegalArgumentException("Attempting to decrement an unsigned counter");
         return BASE.compareAndSet(this, from, to);
     }
 
     public void increment(int by) {
         if (by == 0) return;
 
-        //long rnd = MathUtils.rand();
         atomicAdd(aggregators, Math.absExact(by), 0 ,by < 0);
     }
 
@@ -77,7 +76,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
         else {
             //account for the fact we split the array into negative and positive sides
             long half = size >>> 1;
-            int index = MathUtils.splitMixIndex(half);
+            int index = MathUtils.jumpIndex(half);
             normalizedIndex = (int) (isNegative ? index + half : index);
         }
 

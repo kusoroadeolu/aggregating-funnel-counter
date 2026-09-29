@@ -1,4 +1,6 @@
-package io.github.kusoroadeolu.afc;
+package io.github.kusoroadeolu.afc.jmh;
+
+import io.github.kusoroadeolu.afc.AtomicLongCounter;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
