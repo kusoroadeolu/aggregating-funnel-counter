@@ -6,7 +6,7 @@ import java.lang.invoke.VarHandle;
 import static io.github.kusoroadeolu.afc.MathUtils.roundToPowerOfTwo;
 
 /*
-* Based on the paper https://arxiv.org/pdf/2411.14420*
+* Based on the paper https://arxiv.org/pdf/2411.14420
 *
 * A scalable & linearizable fetch and add implementation. Unlike
 * the cpu instruction, this implementation is blocking & not wait free
@@ -73,7 +73,7 @@ class BasePad extends BaseField {
 
 }
 
-public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter {
+public class AggregatingXadd extends BasePad implements AtomicLongCounter {
     private static final int NCPU = Runtime.getRuntime().availableProcessors();
     private static final int FUNNEL_DEPTH = (Math.max(1, MathUtils.roundToPowerOfTwo(NCPU) / 16)); //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
@@ -83,7 +83,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
     private final AggregatorArray[] aggregators;
     private final boolean unsigned;
 
-    public AggregatingXaddCounter(boolean isUnsigned) {
+    public AggregatingXadd(boolean isUnsigned) {
         this.aggregators = new AggregatorArray[FUNNEL_DEPTH];
         for (int i = 0; i < FUNNEL_DEPTH; ++i) {
             int pow = i + 1;
@@ -94,34 +94,30 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
         this.unsigned = isUnsigned;
     }
 
-    public AggregatingXaddCounter() {
+    public AggregatingXadd() {
         this(false);
     }
 
-    @Override
     public long fetchAndIncrement() {
        return increment(1);
     }
 
-    @Override
     public long fetchAndDecrement() {
-       if (unsigned) throw new IllegalArgumentException("Attempting to decrement an unsigned counter");
+       if (unsigned) throw new IllegalArgumentException("Cannot decrement an unsigned aggregating xadd");
        return increment(-1);
     }
 
-    @Override
     public long value() {
         return base;
     }
 
-    public long increment(long by) {
+    long increment(long by) {
         if (by == 0) return value();
         return atomicAdd(aggregators, Math.absExact(by), 0,by < 0);
     }
 
-    @Override
     public boolean compareAndSet(long from, long to) {
-        if (unsigned && to < 0) throw new IllegalArgumentException("Attempting to decrement an unsigned counter");
+        if (unsigned && to < 0) throw new IllegalArgumentException("Cannot decrement an unsigned aggregating xadd");
         return BASE.compareAndSet(this, from, to);
     }
 
@@ -165,7 +161,6 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
 
         } else {
             var b = start;
-
             while (!(b.before <= aBefore && aBefore < b.after)) {
                 b = b.next;
             }
@@ -299,7 +294,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
     static {
         var l = MethodHandles.lookup();
         try {
-            BASE = l.findVarHandle(AggregatingXaddCounter.class, "base", long.class);
+            BASE = l.findVarHandle(AggregatingXadd.class, "base", long.class);
             VALUE = l.findVarHandle(Aggregator.class, "value", long.class);
             LATEST = l.findVarHandle(Aggregator.class, "latest", Batch.class);
         }catch (Exception e) {

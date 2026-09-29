@@ -37,33 +37,21 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
         this(false);
     }
 
-    @Override
-    public long fetchAndIncrement() {
-        increment(1);
-        return 1;
+    public void increment() {
+        incrementBy(1);
     }
 
-    @Override
-    public long fetchAndDecrement() {
-        if (unsigned) throw new IllegalArgumentException("Attempting to decrement an unsigned counter");
-        increment(-1);
-        return 1;
+    public void decrement() {
+        if (unsigned) throw new IllegalArgumentException("Cannot decrement an unsigned aggregating atomic");
+        incrementBy(-1);
     }
 
-    @Override
     public long value() {
         return base;
     }
 
-    @Override
-    public boolean compareAndSet(long from, long to) {
-        if (unsigned && to < 0) throw new IllegalArgumentException("Attempting to decrement an unsigned counter");
-        return BASE.compareAndSet(this, from, to);
-    }
-
-    public void increment(int by) {
+    void incrementBy(long by) {
         if (by == 0) return;
-
         atomicAdd(aggregators, Math.absExact(by), 0 ,by < 0);
     }
 

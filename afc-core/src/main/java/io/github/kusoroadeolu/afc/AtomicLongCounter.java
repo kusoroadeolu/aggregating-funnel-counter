@@ -1,8 +1,6 @@
 package io.github.kusoroadeolu.afc;
 
-public interface AtomicLongCounter {
-    long fetchAndIncrement();
-    long fetchAndDecrement();
+//Marker interface
+public interface AtomicLongCounter{
     long value();
-    boolean compareAndSet(long from, long to);
 }
