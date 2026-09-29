@@ -23,7 +23,7 @@ import static io.github.kusoroadeolu.afc.jmh.JvmArgs.*;
 @BenchmarkMode(Mode.Throughput)
 public class CounterScalingBench {
 
-    @Param({"AggregatingXaddCounter", "XaddCounter" ,"AggregatingAtomicCounter"})
+    @Param({"AggregatingXaddCounter","AggregatingAtomicCounter"})
     private String implementation;
 
     static boolean unsigned = true;
@@ -79,56 +79,48 @@ public class CounterScalingBench {
 ╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.eightThread ─╮
 │  Implementation           Score  Error   Unit                   │
 │  ------------------------ ------ ------- ------                 │
-│  AggregatingXaddCounter   46.319 ± 1.192 ops/us                 │
+│  AggregatingXaddCounter   48.150 ± 1.982 ops/us                 │
 │  XaddCounter              32.147 ± 0.364 ops/us                 │
-│  AggregatingAtomicCounter 61.651 ± 2.399 ops/us                 │
+│  AggregatingAtomicCounter 58.389 ± 2.093 ops/us                 │
 ╰─────────────────────────────────────────────────────────────────╯
 
 ╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.fourThread ─╮
 │  Implementation           Score  Error   Unit                  │
 │  ------------------------ ------ ------- ------                │
-│  AggregatingXaddCounter   27.223 ± 1.382 ops/us                │
+│  AggregatingXaddCounter   33.071 ± 0.797 ops/us                │
 │  XaddCounter              25.718 ± 0.629 ops/us                │
-│  AggregatingAtomicCounter 35.448 ± 0.765 ops/us                │
+│  AggregatingAtomicCounter 48.515 ± 1.865 ops/us                │
 ╰────────────────────────────────────────────────────────────────╯
 
 ╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.twoThread ─╮
 │  Implementation           Score  Error   Unit                 │
 │  ------------------------ ------ ------- ------               │
-│  AggregatingXaddCounter   19.862 ± 0.467 ops/us               │
+│  AggregatingXaddCounter   44.089 ± 1.295 ops/us               │
 │  XaddCounter              28.261 ± 2.153 ops/us               │
-│  AggregatingAtomicCounter 24.361 ± 1.292 ops/us               │
+│  AggregatingAtomicCounter 49.729 ± 2.910 ops/us               │
 ╰───────────────────────────────────────────────────────────────╯
-
-╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.eightThread ─╮
-│  Implementation           Score  Error   Unit                   │
-│  ------------------------ ------ ------- ------                 │
-│  AggregatingXaddCounter   45.739 ± 1.744 ops/us                 │
-│  XaddCounter              37.299 ± 1.580 ops/us                 │
-│  AggregatingAtomicCounter 62.102 ± 2.598 ops/us                 │
-╰─────────────────────────────────────────────────────────────────╯
 * */
 
 /* FUNNEL-DEPTH = 2
 ╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.eightThread ─╮
 │  Implementation           Score  Error   Unit                   │
 │  ------------------------ ------ ------- ------                 │
-│  AggregatingXaddCounter   26.930 ± 1.233 ops/us                 │
-│  AggregatingAtomicCounter 37.144 ± 1.237 ops/us                 │
+│  AggregatingXaddCounter   20.618 ± 2.411 ops/us                 │
+│  AggregatingAtomicCounter 36.239 ± 1.292 ops/us                 │
 ╰─────────────────────────────────────────────────────────────────╯
 
 ╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.fourThread ─╮
 │  Implementation           Score  Error   Unit                  │
 │  ------------------------ ------ ------- ------                │
-│  AggregatingXaddCounter   12.366 ± 0.286 ops/us                │
-│  AggregatingAtomicCounter 19.087 ± 0.239 ops/us                │
+│  AggregatingXaddCounter   17.965 ± 0.848 ops/us                │
+│  AggregatingAtomicCounter 26.564 ± 0.480 ops/us                │
 ╰────────────────────────────────────────────────────────────────╯
 
 ╭ io.github.kusoroadeolu.afc.jmh.CounterScalingBench.twoThread ─╮
 │  Implementation           Score  Error   Unit                 │
 │  ------------------------ ------ ------- ------               │
-│  AggregatingXaddCounter   11.998 ± 0.543 ops/us               │
-│  AggregatingAtomicCounter 21.401 ± 0.704 ops/us               │
+│  AggregatingXaddCounter   12.759 ± 0.702 ops/us               │
+│  AggregatingAtomicCounter 19.409 ± 0.201 ops/us               │
 ╰───────────────────────────────────────────────────────────────╯
 * */
 

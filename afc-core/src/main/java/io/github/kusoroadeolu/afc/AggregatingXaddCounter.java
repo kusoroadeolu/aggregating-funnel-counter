@@ -75,7 +75,7 @@ class BasePad extends BaseField {
 
 public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter {
     private static final int NCPU = Runtime.getRuntime().availableProcessors();
-    private static final int FUNNEL_DEPTH = 1; //a funnel depth of one seems to be the best for my cpu count
+    private static final int FUNNEL_DEPTH = 2; //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
     // Hmm, though that'd only be true if higher depth alleviates contention past 8 threads which unfortunately I cannot prove yet
 
@@ -116,8 +116,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
 
     public long increment(long by) {
         if (by == 0) return value();
-        long rnd = MathUtils.rand();
-        return atomicAdd(aggregators, Math.absExact(by), 0, rnd ,by < 0);
+        return atomicAdd(aggregators, Math.absExact(by), 0,by < 0);
     }
 
     @Override
@@ -126,17 +125,18 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
         return BASE.compareAndSet(this, from, to);
     }
 
-    long atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, long rnd, boolean isNegative){
+    long atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, boolean isNegative){
         var aggregatorArray = aggregators[level];
         long size = aggregatorArray.size();
 
         //account for the fact we split the array into negative and positive sides
 
         int normalizedIndex;
-        if (unsigned) normalizedIndex = (int) (rnd & (size - 1));
+        if (unsigned) normalizedIndex = MathUtils.jumpIndex(size);
         else {
+            //account for the fact we split the array into negative and positive sides
             long half = size >>> 1;
-            int index = (int) (rnd & (half - 1));
+            int index = MathUtils.splitMixIndex(half);
             normalizedIndex = (int) (isNegative ? index + half : index);
         }
 
@@ -156,7 +156,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
             long mainBefore;
 
             if (level == (FUNNEL_DEPTH - 1)) mainBefore = (long) BASE.getAndAdd(this, isNegative ? -diff : diff);
-            else mainBefore = atomicAdd(aggregators, diff, level + 1, rnd, isNegative);
+            else mainBefore = atomicAdd(aggregators, diff, level + 1, isNegative);
 
             Batch newBatch = new Batch(aBefore, value, mainBefore);
             latest.next = newBatch;
