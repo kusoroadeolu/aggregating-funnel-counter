@@ -81,9 +81,9 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
 
 
     private final AggregatorArray[] aggregators;
-    private final boolean monotonic;
+    private final boolean unsigned;
 
-    public AggregatingXaddCounter(boolean isMonotonic) {
+    public AggregatingXaddCounter(boolean isUnsigned) {
         this.aggregators = new AggregatorArray[FUNNEL_DEPTH];
         for (int i = 0; i < FUNNEL_DEPTH; ++i) {
             int pow = i + 1;
@@ -91,7 +91,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
             aggregators[i] = new AggregatorArray(size);
         }
 
-        this.monotonic = isMonotonic;
+        this.unsigned = isUnsigned;
     }
 
     public AggregatingXaddCounter() {
@@ -105,7 +105,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
 
     @Override
     public long fetchAndDecrement() {
-       if (monotonic) throw new IllegalArgumentException("Attempting to decrement a monotonic counter");
+       if (unsigned) throw new IllegalArgumentException("Attempting to decrement a unsigned counter");
        return increment(-1);
     }
 
@@ -116,8 +116,14 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
 
     public long increment(long by) {
         if (by == 0) return value();
-        long rnd = MathUtils.index();
+        long rnd = MathUtils.rand();
         return atomicAdd(aggregators, Math.absExact(by), 0, rnd ,by < 0);
+    }
+
+    @Override
+    public boolean compareAndSet(long from, long to) {
+        if (unsigned && to < 0) throw new IllegalArgumentException("Attempting to decrement a unsigned counter");
+        return BASE.compareAndSet(this, from, to);
     }
 
     long atomicAdd(AggregatorArray[] aggregators, long incrementBy, int level, long rnd, boolean isNegative){
@@ -127,7 +133,7 @@ public class AggregatingXaddCounter extends BasePad implements AtomicLongCounter
         //account for the fact we split the array into negative and positive sides
 
         int normalizedIndex;
-        if (monotonic) normalizedIndex = (int) (rnd & (size - 1));
+        if (unsigned) normalizedIndex = (int) (rnd & (size - 1));
         else {
             long half = size >>> 1;
             int index = (int) (rnd & (half - 1));

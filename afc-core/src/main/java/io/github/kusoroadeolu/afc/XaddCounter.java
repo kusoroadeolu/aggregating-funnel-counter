@@ -20,6 +20,11 @@ public class XaddCounter implements AtomicLongCounter {
     }
 
     @Override
+    public boolean compareAndSet(long from, long to) {
+        return VALUE.compareAndSet(this, from, to);
+    }
+
+    @Override
     public long value() {
         return value;
     }

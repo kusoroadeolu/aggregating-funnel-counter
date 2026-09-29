@@ -18,11 +18,11 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
     private static final int FUNNEL_DEPTH = 1; //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
     // Hmm, though that'd only be true if higher depth alleviates contention past 8 threads which unfortunately I cannot prove yet
-    private final boolean monotonic;
+    private final boolean unsigned; //we only allow positive integers
 
     private final AggregatorArray[] aggregators;
 
-    public AggregatingAtomicCounter(boolean isMonotonic) {
+    public AggregatingAtomicCounter(boolean isUnsigned) {
         this.aggregators = new AggregatorArray[FUNNEL_DEPTH];
         for (int i = 0; i < FUNNEL_DEPTH; ++i) {
             int pow = i + 1;
@@ -30,7 +30,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
             aggregators[i] = new AggregatorArray(size);
         }
 
-        monotonic = isMonotonic;
+        unsigned = isUnsigned;
     }
 
     public AggregatingAtomicCounter() {
@@ -45,7 +45,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
 
     @Override
     public long fetchAndDecrement() {
-        if (monotonic) throw new IllegalArgumentException("Attempting to decrement a monotonic counter");
+        if (unsigned) throw new IllegalArgumentException("Attempting to decrement a monotonic counter");
         increment(-1);
         return 1;
     }
@@ -55,10 +55,16 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
         return base;
     }
 
+    @Override
+    public boolean compareAndSet(long from, long to) {
+        if (unsigned && to < 0) throw new IllegalArgumentException("Attempting to decrement a unsigned counter");
+        return BASE.compareAndSet(this, from, to);
+    }
+
     public void increment(int by) {
         if (by == 0) return;
 
-        long rnd = MathUtils.index();
+        long rnd = MathUtils.rand();
         atomicAdd(aggregators, Math.absExact(by), 0, rnd ,by < 0);
     }
 
@@ -68,7 +74,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
         long size = aggregatorArray.size();
 
         int normalizedIndex;
-        if (monotonic) normalizedIndex = (int) (rnd & (size - 1));
+        if (unsigned) normalizedIndex = (int) (rnd & (size - 1));
         else {
             //account for the fact we split the array into negative and positive sides
             long half = size >>> 1;

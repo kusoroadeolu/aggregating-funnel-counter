@@ -20,22 +20,22 @@ import static io.github.kusoroadeolu.afc.jmh.JvmArgs.*;
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 10, time = 1)
-@BenchmarkMode(Mode.SampleTime)
+@BenchmarkMode(Mode.Throughput)
 public class CounterScalingBench {
 
     @Param({"AggregatingXaddCounter", "XaddCounter" ,"AggregatingAtomicCounter"})
     private String implementation;
 
-    static boolean monotonic = true;
+    static boolean unsigned = true;
 
     private AtomicLongCounter counter;
 
     @Setup(Level.Trial)
     public void setup() {
         counter = switch (implementation) {
-            case "AggregatingXaddCounter" -> new AggregatingXaddCounter(monotonic);
+            case "AggregatingXaddCounter" -> new AggregatingXaddCounter(unsigned);
             case "XaddCounter" -> new XaddCounter();
-            case "AggregatingAtomicCounter" -> new AggregatingAtomicCounter(monotonic);
+            case "AggregatingAtomicCounter" -> new AggregatingAtomicCounter(unsigned);
             default -> throw new IllegalArgumentException();
         };
 

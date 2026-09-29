@@ -1,8 +1,9 @@
 package io.github.kusoroadeolu.afc;
 
-public class MathUtils {
+public final class MathUtils {
 
-    static long index() {
+    //splitmix 64 finalizer
+    static long rand() {
         long id = Thread.currentThread().threadId();
         long h = id + 0x9E3779B97F4A7C15L;
         h = (h ^ (h >>> 30)) * 0xBF58476D1CE4E5B9L;
