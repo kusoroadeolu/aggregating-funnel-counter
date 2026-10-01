@@ -95,7 +95,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
     }
 
     public AggregatingXadd() {
-        this(false);
+        this(true);
     }
 
     public long fetchAndIncrement() {
@@ -107,12 +107,12 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
        return increment(-1);
     }
 
-    public long value() {
+    public long get() {
         return base;
     }
 
     long increment(long by) {
-        if (by == 0) return value();
+        if (by == 0) return get();
         return atomicAdd(aggregators, Math.absExact(by), 0,by < 0);
     }
 

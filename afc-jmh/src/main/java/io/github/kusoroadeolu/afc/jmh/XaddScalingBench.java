@@ -25,7 +25,7 @@ public class XaddScalingBench {
     @Param({"AggregatingXadd", "Xadd" ,"AggregatingAtomicCounter"})
     private String implementation;
 
-    static boolean unsigned = true;
+    static final boolean unsigned = true;
 
     private AtomicLongCounter counter;
 

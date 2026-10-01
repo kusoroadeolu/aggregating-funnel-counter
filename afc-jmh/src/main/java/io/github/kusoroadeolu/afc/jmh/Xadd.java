@@ -23,7 +23,7 @@ public class Xadd implements AtomicLongCounter {
         return VALUE.compareAndSet(this, from, to);
     }
 
-    public long value() {
+    public long get() {
         return value;
     }
 

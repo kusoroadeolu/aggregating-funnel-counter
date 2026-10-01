@@ -34,7 +34,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
     }
 
     public AggregatingAtomicCounter() {
-        this(false);
+        this(true);
     }
 
     public void increment() {
@@ -46,7 +46,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
         incrementBy(-1);
     }
 
-    public long value() {
+    public long get() {
         return base;
     }
 
