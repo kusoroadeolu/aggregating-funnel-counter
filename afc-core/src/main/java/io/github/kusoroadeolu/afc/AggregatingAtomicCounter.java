@@ -73,9 +73,11 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
 
         long aBefore = aggregator.fetchAndAddValue(incrementBy);
         long after;
-        while ((after = aggregator.laAfter()) < aBefore) { // <- can use an acquire here
+        while ((after = aggregator.loAfter()) < aBefore) {
             Thread.onSpinWait();
         }
+
+        VarHandle.acquireFence();
 
         if (aBefore == after) { //we can yield before we read value? to allow other threads make progress?
             long value = aggregator.value;
@@ -137,8 +139,8 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
     static class AggregatorAfterField extends AggregatorLPad {
         volatile long after;
 
-        public long laAfter() {
-            return (long) AFTER.getAcquire(this);
+        public long loAfter() {
+            return (long) AFTER.getOpaque(this);
         }
     }
 

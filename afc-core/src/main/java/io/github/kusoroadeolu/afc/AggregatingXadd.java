@@ -146,6 +146,8 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
             Thread.onSpinWait();
         }
 
+        VarHandle.acquireFence(); //avoid reordering downwards
+
         if (aBefore == latest.after) { //we can yield before we read value? to allow other threads make progress?
             long value = aggregator.value;
             long diff = value - aBefore;
@@ -220,7 +222,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
         volatile Batch latest = new Batch(0, 0, 0);
 
         public Batch latestBatch() {
-            return (Batch) LATEST.getAcquire(this);
+            return (Batch) LATEST.getOpaque(this);
         }
     }
 
