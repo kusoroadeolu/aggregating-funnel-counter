@@ -165,7 +165,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
 
         } else {
             var b = start;
-            while (!(b.before < aBefore && aBefore < b.after)) b = b.next;
+            while (!(b.before <= aBefore && aBefore < b.after)) b = b.next;
             if (isNegative) return (b.mainBefore + b.before) - aBefore;
             else return b.mainBefore + (aBefore - b.before);
         }

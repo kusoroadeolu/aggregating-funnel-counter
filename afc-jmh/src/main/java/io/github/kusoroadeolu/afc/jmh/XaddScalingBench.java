@@ -71,7 +71,6 @@ public class XaddScalingBench {
         };
     }
 
-    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     long increment(AggregatingAtomicCounter ax) {
         ax.increment();
         return 1;
@@ -81,7 +80,6 @@ public class XaddScalingBench {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(XaddScalingBench.class.getSimpleName())
-                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-mpmc-pq")
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
 
@@ -90,52 +88,52 @@ public class XaddScalingBench {
 }
 
 /* FUNNEL-DEPTH = 1
-╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.eightThread ────╮
-│  Implementation           Score  Error   Unit                   │
-│  ------------------------ ------ ------- ------                 │
-│  AggregatingXadd          48.150 ± 1.982 ops/us                 │
-│  Xadd                     32.147 ± 0.364 ops/us                 │
-│  AggregatingAtomicCounter 58.389 ± 2.093 ops/us                 │
-╰─────────────────────────────────────────────────────────────────╯
+╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.eightThread ─╮
+│  Implementation           Score  Error   Unit                │
+│  ------------------------ ------ ------- ------              │
+│  AggregatingXadd          45.802 ± 2.436 ops/us              │
+│  Xadd                     31.733 ± 3.139 ops/us              │
+│  AggregatingAtomicCounter 59.749 ± 1.894 ops/us              │
+╰──────────────────────────────────────────────────────────────╯
 
-╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.fourThread ────╮
-│  Implementation           Score  Error   Unit                  │
-│  ------------------------ ------ ------- ------                │
-│  AggregatingXadd          33.071 ± 0.797 ops/us                │
-│  Xadd                     25.718 ± 0.629 ops/us                │
-│  AggregatingAtomicCounter 48.515 ± 1.865 ops/us                │
-╰────────────────────────────────────────────────────────────────╯
+╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.fourThread ─╮
+│  Implementation           Score  Error   Unit               │
+│  ------------------------ ------ ------- ------             │
+│  AggregatingXadd          36.298 ± 3.291 ops/us             │
+│  Xadd                     25.405 ± 0.227 ops/us             │
+│  AggregatingAtomicCounter 51.327 ± 1.553 ops/us             │
+╰─────────────────────────────────────────────────────────────╯
 
-╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.twoThread ────╮
-│  Implementation           Score  Error   Unit                 │
-│  ------------------------ ------ ------- ------               │
-│  AggregatingXadd          44.089 ± 1.295 ops/us               │
-│  Xadd                     28.261 ± 2.153 ops/us               │
-│  AggregatingAtomicCounter 49.729 ± 2.910 ops/us               │
-╰───────────────────────────────────────────────────────────────╯
+╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.twoThread ─╮
+│  Implementation           Score  Error   Unit              │
+│  ------------------------ ------ ------- ------            │
+│  AggregatingXadd          43.757 ± 1.975 ops/us            │
+│  Xadd                     27.714 ± 1.931 ops/us            │
+│  AggregatingAtomicCounter 51.519 ± 1.226 ops/us            │
+╰────────────────────────────────────────────────────────────╯
 * */
 
 /* FUNNEL-DEPTH = 2
 ╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.eightThread ─╮
-│  Implementation           Score  Error   Unit                   │
-│  ------------------------ ------ ------- ------                 │
-│  AggregatingXadd          20.618 ± 2.411 ops/us                 │
-│  AggregatingAtomicCounter 36.239 ± 1.292 ops/us                 │
-╰─────────────────────────────────────────────────────────────────╯
+│  Implementation           Score  Error   Unit                │
+│  ------------------------ ------ ------- ------              │
+│  AggregatingXadd          27.672 ± 1.531 ops/us              │
+│  AggregatingAtomicCounter 37.543 ± 1.253 ops/us              │
+╰──────────────────────────────────────────────────────────────╯
 
 ╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.fourThread ─╮
-│  Implementation           Score  Error   Unit                  │
-│  ------------------------ ------ ------- ------                │
-│  AggregatingXadd          17.965 ± 0.848 ops/us                │
-│  AggregatingAtomicCounter 26.564 ± 0.480 ops/us                │
-╰────────────────────────────────────────────────────────────────╯
+│  Implementation           Score  Error   Unit               │
+│  ------------------------ ------ ------- ------             │
+│  AggregatingXadd          23.134 ± 1.029 ops/us             │
+│  AggregatingAtomicCounter 31.206 ± 0.422 ops/us             │
+╰─────────────────────────────────────────────────────────────╯
 
 ╭ io.github.kusoroadeolu.afc.jmh.XaddScalingBench.twoThread ─╮
-│  Implementation           Score  Error   Unit                 │
-│  ------------------------ ------ ------- ------               │
-│  AggregatingXadd          12.759 ± 0.702 ops/us               │
-│  AggregatingAtomicCounter 19.409 ± 0.201 ops/us               │
-╰───────────────────────────────────────────────────────────────╯
+│  Implementation           Score  Error   Unit              │
+│  ------------------------ ------ ------- ------            │
+│  AggregatingXadd          24.978 ± 0.873 ops/us            │
+│  AggregatingAtomicCounter 37.188 ± 1.489 ops/us            │
+╰────────────────────────────────────────────────────────────╯
 * */
 
 
