@@ -79,7 +79,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
 
         VarHandle.acquireFence();
 
-        if (aBefore == after) { //we can yield before we read value? to allow other threads make progress?
+        if (aBefore == after) {
             long value = aggregator.value;
             long diff = value - aBefore;
 
@@ -164,7 +164,7 @@ public class AggregatingAtomicCounter extends BasePad implements AtomicLongCount
     }
 
     static class AggregatorValueField extends AggregatorAfterFieldPad {
-        volatile long value;
+        long value;
 
 
         long fetchAndAddValue(long by) {
