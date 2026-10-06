@@ -7,9 +7,7 @@ import java.lang.invoke.VarHandle;
 
 public class Xadd implements AtomicLongCounter {
     private volatile long value;
-
     private static final VarHandle VALUE;
-
 
     public long fetchAndIncrement() {
        return (long) VALUE.getAndAdd(this, 1);

@@ -94,6 +94,13 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
         this.unsigned = isUnsigned;
     }
 
+    //for lincheck tests
+    AggregatingXadd(int arraySize) {
+        this.aggregators = new AggregatorArray[arraySize];
+        aggregators[0] = new AggregatorArray(arraySize);
+        unsigned = true;
+    }
+
     public AggregatingXadd() {
         this(true);
     }
@@ -198,7 +205,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
 
 
     @SuppressWarnings("unused")
-    static class AggregatorLPad {
+    static class AggregatorPad0 {
         byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
         byte b010,b011,b012,b013,b014,b015,b016,b017;// 16b
         byte b020,b021,b022,b023,b024,b025,b026,b027;// 24b
@@ -217,7 +224,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
         byte b170,b171,b172,b173,b174,b175,b176,b177;//128b
     }
 
-    static class AggregatorAfterField extends AggregatorLPad {
+    static class AggregatorLatestField extends AggregatorPad0 {
         volatile Batch latest = new Batch(0, 0, 0);
 
         public Batch latestBatch() {
@@ -226,7 +233,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
     }
 
     @SuppressWarnings("unused")
-    static class AggregatorAfterFieldPad extends AggregatorAfterField {
+    static class AggregatorPad1 extends AggregatorLatestField {
         byte b000, b001, b002, b003, b004, b005, b006, b007;//  8b
         byte b010, b011, b012, b013, b014, b015, b016, b017;// 16b
         byte b020, b021, b022, b023, b024, b025, b026, b027;// 24b
@@ -244,7 +251,7 @@ public class AggregatingXadd extends BasePad implements AtomicLongCounter {
         byte b160, b161, b162, b163, b164, b165, b166, b167;//120b
     }
 
-    static class AggregatorValueField extends AggregatorAfterFieldPad {
+    static class AggregatorValueField extends AggregatorPad1 {
         long value;
 
 

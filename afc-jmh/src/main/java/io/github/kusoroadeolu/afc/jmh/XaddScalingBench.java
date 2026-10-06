@@ -22,7 +22,7 @@ import static io.github.kusoroadeolu.afc.jmh.JvmArgs.*;
 @BenchmarkMode(Mode.Throughput)
 public class XaddScalingBench {
 
-    @Param({"AggregatingXadd", "Xadd" ,"AggregatingAtomicCounter"})
+    @Param({"AggregatingXadd", "Xadd", "AggregatingAtomicCounter"})
     private String implementation;
 
     static final boolean unsigned = true;
