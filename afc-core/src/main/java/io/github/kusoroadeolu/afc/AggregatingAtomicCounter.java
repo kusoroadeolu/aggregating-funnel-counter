@@ -13,9 +13,9 @@ import static io.github.kusoroadeolu.afc.MathUtils.roundToPowerOfTwo;
 *
 * This class is expected to have a significant thrpt improvement over its counterpart
 *  */
-public class AggregatingAtomicCounter extends BasePad implements AtomicLongCounter {
+public class AggregatingAtomicCounter extends BasePad implements AtomicLong {
     private static final int NCPU = Runtime.getRuntime().availableProcessors();
-    private static final int FUNNEL_DEPTH = (Math.max(1, MathUtils.roundToPowerOfTwo(NCPU) / 16)); //a funnel depth of one seems to be the best for my cpu count
+    private static final int FUNNEL_DEPTH = (Math.max(1, MathUtils.roundToPowerOfTwo(NCPU) / 32)); //a funnel depth of one seems to be the best for my cpu count
     // I wonder if we can make this adaptive for computers with more cpus, maybe something like (roundToPow2(NCPU) >>> 1)?
     // Hmm, though that'd only be true if higher depth alleviates contention past 8 threads which unfortunately I cannot prove yet
     private final boolean unsigned; //we only allow positive integers

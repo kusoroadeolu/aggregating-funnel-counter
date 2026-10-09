@@ -1,11 +1,11 @@
 package io.github.kusoroadeolu.afc.jmh;
 
-import io.github.kusoroadeolu.afc.AtomicLongCounter;
+import io.github.kusoroadeolu.afc.AtomicLong;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-public class Xadd implements AtomicLongCounter {
+public class Xadd implements AtomicLong {
     private volatile long value;
     private static final VarHandle VALUE;
 

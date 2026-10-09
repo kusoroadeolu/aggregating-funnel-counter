@@ -2,10 +2,9 @@ package io.github.kusoroadeolu.afc.jmh;
 
 import io.github.kusoroadeolu.afc.AggregatingAtomicCounter;
 import io.github.kusoroadeolu.afc.AggregatingXadd;
-import io.github.kusoroadeolu.afc.AtomicLongCounter;
+import io.github.kusoroadeolu.afc.AtomicLong;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
@@ -27,7 +26,7 @@ public class XaddScalingBench {
 
     static final boolean unsigned = true;
 
-    private AtomicLongCounter counter;
+    private AtomicLong counter;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -58,11 +57,11 @@ public class XaddScalingBench {
         doWork(bh, counter);
     }
 
-    void doWork(Blackhole bh, AtomicLongCounter counter) {
+    void doWork(Blackhole bh, AtomicLong counter) {
         bh.consume(increment(counter));
     }
 
-    long increment(AtomicLongCounter counter) {
+    long increment(AtomicLong counter) {
         return switch (counter) {
             case AggregatingXadd ax -> ax.fetchAndIncrement();
             case AggregatingAtomicCounter aac -> increment(aac);
